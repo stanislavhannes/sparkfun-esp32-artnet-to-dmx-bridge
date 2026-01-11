@@ -2,7 +2,7 @@
 
 A high-performance Artnet to DMX bridge implementation for ESP32 using dual-core architecture for optimal real-time performance.
 
-![SparkFun ESP32 DMX to LED Shield](https://camo.githubusercontent.com/1de4477b3306599a386357212f74173a8a2f9ec8a52b05ea6a7283ab794c4b3b/68747470733a2f2f63646e2e737061726b66756e2e636f6d2f722f3530302d3530302f6173736574732f70617274732f312f332f342f372f372f31353131302d537061726b46756e5f45535033325f5468696e675f506c75735f444d585f746f5f4c45445f536869656c642d30312e6a7067)
+![SparkFun ESP32 DMX to LED Shield](image.jpg)
 
 ## Features
 
