@@ -1,70 +1,54 @@
 # sparkfun ESP32 Artnet to DMX Bridge
 
-A high-performance Artnet to DMX bridge implementation for ESP32 using dual-core architecture for optimal real-time performance.
+A high-performance Artnet to DMX bridge implementation for the sparkfun ESP32 DMX Shield.
+It leverages the ESP32's dual-core architecture to ensure jitter-free DMX output while handling network traffic and debug logging on a separate core.
 
 ![SparkFun ESP32 DMX to LED Shield](image.jpg)
 
-## Features
+## 🚀 Key Features
 
-- **Dual-Core Architecture**: Utilizes both ESP32 cores for maximum performance
-  - Core 0: Artnet reception over WiFi
-  - Core 1: DMX output processing
-- **WiFi Manager Integration**: Automatic WiFi configuration with captive portal
-- **Thread-Safe Communication**: Semaphore-protected data sharing between cores
-- **Real-Time Performance**: Optimized for professional lighting applications
-- **Hardware Isolation**: Compatible with electrically isolated DMX hardware
+* **Dual-Core Processing:**
+    * **Core 0:** Handles WiFi stack, Art-Net UDP packet parsing, and Serial Debugging.
+    * **Core 1:** Dedicated solely to the DMX timing and RS485 hardware communication.
+* **WiFiManager:** No hardcoded WiFi credentials. The node starts its own Access Point (`Artnet-DMX-Node`) if no known network is found.
+* **Visual Feedback:** Onboard Status LED (GPIO 13) acts as a data heartbeat.
+* **Debug Mode:** Global toggle to monitor incoming DMX frames and system health via Serial.
+* **Collision Safety:** Uses FreeRTOS Semaphores to prevent data corruption between cores.
 
-## Hardware Requirements
-
-- ESP32 development board
-- [SparkFun ESP32 DMX to LED Shield (DEV-15110)](https://www.sparkfun.com/products/15110)
-- DMX-compatible lighting equipment
-
-## Pin Configuration
-
-The code uses the following pin assignments for DMX communication:
-
-- **DMX_TX_PIN**: GPIO 17 (Transmit)
-- **DMX_RX_PIN**: GPIO 16 (Receive) 
-- **DMX_EN_PIN**: GPIO 4 (Enable)
-
-**Note**: This implementation does not utilize the LED pins from the SparkFun board, focusing solely on DMX output functionality.
-
-## WiFi Configuration
-
-The device creates a WiFi Access Point named **"Sparkfun-Artnet-DMX"** for easy configuration:
-
-1. Connect to the AP when first powered on
-2. Navigate to the captive portal (usually opens automatically)
-3. Select your WiFi network and enter credentials
-4. The device will connect and be ready for Artnet data
+---
 
 ## Installation
 
-1. Install the required Arduino libraries:
-   - [SparkFunDMX](https://github.com/sparkfun/SparkFunDMX)
-   - [ArtnetWifi](https://github.com/rstephan/ArtnetWifi)
-   - [WiFiManager](https://github.com/tzapu/WiFiManager)
-
-2. Upload the code to your ESP32
+1. Upload the code to your ESP32 using ArduinoIDE or Platformio
 
 3. Connect your DMX equipment to the shield
 
-## Usage
+---
 
-1. Power on the ESP32 with the shield
-2. Connect to the "Sparkfun-Artnet-DMX" WiFi network
-3. Configure your WiFi credentials through the captive portal
-4. Send Artnet data to the device's IP address on universe 0
-5. DMX data will be output in real-time to connected devices
+## How to Use
+
+1. **Power On:** The LED will blink during the boot sequence.
+2. **WiFi Config:** If not connected, look for a WiFi network named **Artnet-DMX-Node:** on your phone and configure your local SSID/Password.
+3. **Send Data:** Point your Art-Net software (QLC+, MadMapper, etc.) to the ESP32's IP address on Universe 0.
+4. **Enjoy:** The onboard LED will flicker when data is being received.
+
+---
 
 ## Technical Details
 
 - **DMX Channels**: Supports up to 512 channels (standard DMX universe)
-- **Artnet Universe**: Configured for universe 0 (modifiable in code)
+- **Artnet Universe**: Configured for universe 0 (modifiable in code via `targetUniverse` variable)
 - **Update Rate**: Real-time processing with minimal latency
 - **Buffer Management**: Atomic operations ensure data integrity
 - **Error Handling**: Automatic restart on WiFi connection failure
+
+### Pin Mapping
+| Function | ESP32 Pin | Note |
+| :--- | :--- | :--- |
+| **DMX TX** | GPIO 17 | Connect to DI on MAX485 |
+| **DMX RX** | GPIO 16 | Connect to RO on MAX485 |
+| **DMX EN** | GPIO 4 | Connect to DE/RE on MAX485 |
+| **Status LED** | GPIO 13 | Internal SparkFun LED |
 
 ## Code Structure
 
@@ -72,6 +56,13 @@ The device creates a WiFi Access Point named **"Sparkfun-Artnet-DMX"** for easy 
 - `loop()`: Handles Artnet packet reception on Core 0
 - `dmxOutputTask()`: Dedicated DMX output task running on Core 1
 - `onDmxFrame()`: Callback function for incoming Artnet data
+
+## Debugging
+Toggle the global variable in the code to enable/disable Serial monitoring:
+```cpp
+bool debugEnabled = true; // Set to false for production use
+```
+When enabled, the node prints a DMX Snapshot of the first 16 channels every 5 seconds to the Serial Monitor (115200 Baud).
 
 ## Credits
 
