@@ -11,6 +11,8 @@ It leverages the ESP32's dual-core architecture to ensure jitter-free DMX output
     * **Core 0:** Handles WiFi stack, Art-Net UDP packet parsing, and Serial Debugging.
     * **Core 1:** Dedicated solely to the DMX timing and RS485 hardware communication.
 * **WiFiManager:** No hardcoded WiFi credentials. The node starts its own Access Point (`Artnet-DMX-Node`) if no known network is found.
+* **Web Portal:** Once connected, the WiFiManager portal stays reachable at `http://<ip>` (or `http://artnet-dmx-node.fritz.box` on a Fritz!Box) to change WiFi settings without re-flashing.
+* **Continuous DMX Refresh:** The last received frame is re-sent continuously, so fixtures keep their state even if the Art-Net sender pauses or only sends on change.
 * **Visual Feedback:** Onboard Status LED (GPIO 13) acts as a data heartbeat.
 * **Debug Mode:** Global toggle to monitor incoming DMX frames and system health via Serial.
 * **Collision Safety:** Uses FreeRTOS Semaphores to prevent data corruption between cores.
@@ -20,17 +22,17 @@ It leverages the ESP32's dual-core architecture to ensure jitter-free DMX output
 ## Installation
 
 1. Upload the code to your ESP32 using ArduinoIDE or Platformio
-
-3. Connect your DMX equipment to the shield
+2. Connect your DMX equipment to the shield
 
 ---
 
 ## How to Use
 
 1. **Power On:** The LED will blink during the boot sequence.
-2. **WiFi Config:** If not connected, look for a WiFi network named **Artnet-DMX-Node:** on your phone and configure your local SSID/Password.
-3. **Send Data:** Point your Art-Net software (QLC+, MadMapper, etc.) to the ESP32's IP address on Universe 0.
-4. **Enjoy:** The onboard LED will flicker when data is being received.
+2. **WiFi Config:** If not connected, look for a WiFi network named **Artnet-DMX-Node** on your phone and configure your local SSID/Password. If no network is configured within 3 minutes the node restarts and tries again.
+3. **Find the Node:** It shows up in your router as `artnet-dmx-node`. Open `http://<ip>` to reach the WiFi portal at any time.
+4. **Send Data:** Point your Art-Net software (QLC+, MadMapper, etc.) to the ESP32's IP address on Universe 0.
+5. **Enjoy:** The onboard LED will flicker when data is being received.
 
 ---
 
@@ -38,29 +40,33 @@ It leverages the ESP32's dual-core architecture to ensure jitter-free DMX output
 
 - **DMX Channels**: Supports up to 512 channels (standard DMX universe)
 - **Artnet Universe**: Configured for universe 0 (modifiable in code via `targetUniverse` variable)
-- **Update Rate**: Real-time processing with minimal latency
-- **Buffer Management**: Atomic operations ensure data integrity
-- **Error Handling**: Automatic restart on WiFi connection failure
+- **Update Rate**: DMX frames are sent back-to-back (~35 fps), independent of the Art-Net input rate
+- **Buffer Management**: A FreeRTOS mutex guards the shared frame buffer between cores
+- **Error Handling**: Automatic restart if no WiFi is configured within 3 minutes
+- **Hostname**: `artnet-dmx-node` (change `HOSTNAME` / `AP_NAME` in the code)
 
 ### Pin Mapping
+The shield fixes these pins, there is nothing to wire up:
+
 | Function | ESP32 Pin | Note |
 | :--- | :--- | :--- |
-| **DMX TX** | GPIO 17 | Connect to DI on MAX485 |
-| **DMX RX** | GPIO 16 | Connect to RO on MAX485 |
-| **DMX EN** | GPIO 4 | Connect to DE/RE on MAX485 |
+| **DMX TX** | GPIO 17 | UART2 TX → RS485 transceiver DI (via optocoupler) |
+| **DMX RX** | GPIO 16 | UART2 RX ← RS485 transceiver RO (unused, output only) |
+| **DMX EN** | GPIO 21 | Transceiver direction: HIGH = send, LOW = receive. Pulled to *send* by the shield when not driven. Shared with I2C SDA – a Qwiic device on this pin would interrupt DMX output. |
 | **Status LED** | GPIO 13 | Internal SparkFun LED |
 
 ## Code Structure
 
-- `setup()`: Initializes hardware, WiFi, and starts dual-core tasks
-- `loop()`: Handles Artnet packet reception on Core 0
-- `dmxOutputTask()`: Dedicated DMX output task running on Core 1
-- `onDmxFrame()`: Callback function for incoming Artnet data
+- `setup()`: Initializes hardware, WiFi (WiFiManager + web portal), and starts the two pinned tasks
+- `artnetTask()`: Core 0 – Art-Net packet reception, web portal, status LED and debug monitor
+- `onDmxFrame()`: Callback for incoming Art-Net data (runs inside `artnetTask`), copies the frame into the shared buffer
+- `dmxOutputTask()`: Core 1 – continuously sends the DMX frame over RS485
+- `loop()`: Unused; the default Arduino task deletes itself
 
 ## Debugging
-Toggle the global variable in the code to enable/disable Serial monitoring:
+Toggle the compile-time constant in the code to enable/disable Serial monitoring (when `false`, the debug code is not compiled in at all):
 ```cpp
-bool debugEnabled = true; // Set to false for production use
+constexpr bool debugEnabled = true; // Set to false for production use
 ```
 When enabled, the node prints a DMX Snapshot of the first 16 channels every 5 seconds to the Serial Monitor (115200 Baud).
 
