@@ -21,8 +21,23 @@ It leverages the ESP32's dual-core architecture to ensure jitter-free DMX output
 
 ## Installation
 
-1. Upload the code to your ESP32 using ArduinoIDE or Platformio
+1. Upload the code to your ESP32 using ArduinoIDE or Platformio – or flash the prebuilt binary (see below)
 2. Connect your DMX equipment to the shield
+
+### Flashing the prebuilt binary
+
+`firmware/` contains a ready-to-flash build for the **SparkFun ESP32 Thing Plus** (ESP32 Arduino core 3.3.11, default partition scheme). No Arduino IDE needed:
+
+| File | Flash offset | Use |
+| :--- | :--- | :--- |
+| `sparkfun_artnet_dmx_esp32.merged.bin` | `0x0` | Complete image (bootloader + partitions + app) – use this for a fresh board |
+| `sparkfun_artnet_dmx_esp32.app.bin` | `0x10000` | Application only – for updating a board that already runs this firmware |
+
+```bash
+pip install esptool
+esptool --chip esp32 --port /dev/cu.usbserial-XXXX --baud 921600 write_flash 0x0 firmware/sparkfun_artnet_dmx_esp32.merged.bin
+```
+On Windows the port is `COMx`. Alternatively use a browser-based flasher such as [esptool-js](https://espressif.github.io/esptool-js/) and load the merged image at `0x0`.
 
 ---
 
